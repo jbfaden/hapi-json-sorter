@@ -186,7 +186,7 @@ public class HapiJsonSorter {
             out= args[1];
         }
         
-        URL url= HapiJsonSorter.class.getResource(n);
+        URL url= new File(n).toURI().toURL();
         Map m= gson.fromJson( new InputStreamReader(url.openStream()), LinkedHashMap.class );
         if ( m.containsKey("type") ) {
             m= sortMap( FileType.HAPI_SCHEMA, "", m );
