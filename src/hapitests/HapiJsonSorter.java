@@ -45,6 +45,9 @@ public class HapiJsonSorter {
         if ( type==FileType.HAPI_SCHEMA ) {
             if ( name.equals("anyOf") ) {
                 return MapType.SCHEMA_PROPERTY;
+            } else if ( name.equals("properties") ) {
+                // it's probably a parameter, but let the code below identify object type
+                logger.fine("properties");
             } else {
                 return MapType.SCHEMA_NODE;
             }
