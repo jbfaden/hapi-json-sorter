@@ -173,7 +173,19 @@ public class HapiJsonSorter {
     public static void main( String[] args ) throws IOException {
         Gson gson= new GsonBuilder().setPrettyPrinting().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE).create();
         //URL url= HapiJsonSorter.class.getResource("info.json");
-        String n= "HAPI-data-access-schema-1.1.json";
+        
+        String n;
+        if ( args.length<1 ) {
+            System.err.println("java -cp HapiJsonSorter.jar <file.json>");
+            System.err.println("   where file.json is info, catalog, info schema, catalog schema, combined schemas, etc.");
+            System.exit(-1);
+        }
+        n= args[0];
+        String out="-";
+        if ( args.length==2 ) {
+            out= args[1];
+        }
+        
         URL url= HapiJsonSorter.class.getResource(n);
         Map m= gson.fromJson( new InputStreamReader(url.openStream()), LinkedHashMap.class );
         if ( m.containsKey("type") ) {
@@ -183,9 +195,15 @@ public class HapiJsonSorter {
         } else {
             m= sortMap( FileType.HAPI, "", m);
         }
-        String s= gson.toJson(m, LinkedHashMap.class);
-        new File("/tmp/hapi/").mkdirs();
-        new FileWriter("/tmp/hapi/"+n).write( s );
         
+        String s= gson.toJson(m, LinkedHashMap.class);
+        
+        if ( out.equals("-") ) {
+            System.out.print(s);
+            
+        } else {
+            new File(out).getParentFile().mkdirs();
+            new FileWriter(out).write( s );
+        }
     }
 }
