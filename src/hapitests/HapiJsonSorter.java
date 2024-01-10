@@ -29,7 +29,10 @@ public class HapiJsonSorter {
         ABOUT,
         INFO,
         PARAMETER,
+        PARAMETER_BINS,        
         HAPI, 
+        REQUEST_STATUS,
+        HAPI_STATUS,
         SCHEMA_NODE,
         SCHEMA_PROPERTY,
         SCHEMA_DEFINITIONS,
@@ -65,8 +68,17 @@ public class HapiJsonSorter {
         if ( m.containsKey("name") && m.containsKey("type") ) {
             return MapType.PARAMETER;
         } 
+        if ( m.containsKey("name") && ( m.containsKey("centers") || m.containsKey("ranges") ) ) {
+            return MapType.PARAMETER_BINS;
+        }
         if ( m.containsKey("description") && m.containsKey("type") ) {
             return MapType.SCHEMA_PROPERTY;
+        }
+        if ( m.containsKey("code") && m.containsKey("message") ) {
+            return MapType.REQUEST_STATUS;   
+        }
+        if ( m.containsKey("HAPI") && m.containsKey("status") ) {
+            return MapType.HAPI_STATUS;
         }
         return MapType.MAP;
     }
@@ -82,6 +94,9 @@ public class HapiJsonSorter {
             return Arrays.asList( "name", "type", "length", "size", "units",
                 "coordinateSystemName", "vectorComponents", "fill", 
                 "description", "label", "bins" );
+        } else if ( mapType==MapType.PARAMETER_BINS ) {
+            return Arrays.asList( "name", "centers", "ranges", 
+                "units", "label", "description" );
         } else if ( mapType==MapType.INFO ) {
             return Arrays.asList( "$schema", "HAPI", "status", "format", "parameters", 
                 "startDate", "stopDate", "timeStampLocation", "cadence", 
@@ -103,6 +118,10 @@ public class HapiJsonSorter {
             return Arrays.asList( "$schema", "HAPI", "HAPIDateTime", 
                 "HAPIStatus", "UnitsAndLabel", "Ref", "about", "capabilities", 
                 "catalog","info" );
+        } else if ( mapType==MapType.REQUEST_STATUS ) {
+            return Arrays.asList( "code", "message" );
+        } else if ( mapType==MapType.HAPI_STATUS ) {
+            return Arrays.asList( "HAPI", "status" );
         } else {
             return Collections.emptyList();
         }
@@ -142,15 +161,18 @@ public class HapiJsonSorter {
         if ( type==FileType.HAPI_COMBINED_SCHEMA ) {
             type= FileType.HAPI_SCHEMA;
         }
-        
+        if ( mapType==MapType.MAP ) {
+            // why did we fail to ID this map?
+            mapType= identifyMapType( type, name, m );
+        }
         List keys= new ArrayList(m.keySet());
         for ( int i=0; i<keys.size(); i++ ) {
             String k= (String)keys.get(i);
             Object o= m.get(k);
             if ( o instanceof Map ) {
-                MapType childMapType= identifyMapType( type, k, (Map)o );
-                m.put(k+"::"+childMapType, sortMap( type, k, (Map)o, depth+1 ) );
-                
+                //MapType childMapType= identifyMapType( type, k, (Map)o );
+                //m.put(k+"::"+childMapType, sortMap( type, k, (Map)o, depth+1 ) );
+                m.put(k, sortMap( type, k, (Map)o, depth+1 ) );
             } else if ( o instanceof List ) {
                 List list= (List)o;
                 if ( list.size()>0 && k.equals("anyOf") ) {
@@ -185,8 +207,9 @@ public class HapiJsonSorter {
                 if ( m.get(k) instanceof List && ((List)m.get(k)).size()>0 ) {
                     Object o= ((List)m.get(k)).get(0);
                     if ( o instanceof Map ) {
-                        MapType childMapType= identifyMapType( type, k, (Map)o );
-                        result.put( k+"::"+childMapType, m.get(k) );
+                        //MapType childMapType= identifyMapType( type, k, (Map)o );
+                        //result.put( k+"::"+childMapType, m.get(k) );
+                        result.put( k, m.get(k) );
                         continue;
                     }
                 }
@@ -228,11 +251,14 @@ public class HapiJsonSorter {
         String s= gson.toJson(m, LinkedHashMap.class);
         
         if ( out.equals("-") ) {
-            System.out.print(s);
-            
+            System.out.println(s);
+            System.out.println("----");
+            System.out.println(n);
         } else {
             new File(out).getParentFile().mkdirs();
             new FileWriter(out).write( s );
+            System.out.println("----");
+            System.out.println(n);
         }
     }
 }
