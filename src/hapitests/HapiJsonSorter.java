@@ -32,6 +32,7 @@ public class HapiJsonSorter {
         HAPI, 
         SCHEMA_NODE,
         SCHEMA_PROPERTY,
+        SCHEMA_DEFINITIONS,
         MAP
     }
     
@@ -48,6 +49,8 @@ public class HapiJsonSorter {
             } else if ( name.equals("properties") ) {
                 // it's probably a parameter, but let the code below identify object type
                 logger.fine("properties");
+            } else if ( name.equals("definitions") && m.containsKey("HAPI") ) {
+                return MapType.SCHEMA_DEFINITIONS;
             } else {
                 return MapType.SCHEMA_NODE;
             }
@@ -80,20 +83,26 @@ public class HapiJsonSorter {
                 "coordinateSystemName", "vectorComponents", "fill", 
                 "description", "label", "bins" );
         } else if ( mapType==MapType.INFO ) {
-            return Arrays.asList( "HAPI", "status", "format", "parameters", 
+            return Arrays.asList( "$schema", "HAPI", "status", "format", "parameters", 
                 "startDate", "stopDate", "timeStampLocation", "cadence", 
                 "sampleStartDate", "sampleStopDate", "maxRequestDuration",
                 "description", "unitsSchema", "coordinateSystemSchema",
                 "resourceURL", "resourceID", "creationDate", "citation", 
                 "modificationDate", "contact", "contactID", "additionalMetadata" );
         } else if ( mapType==MapType.SCHEMA_PROPERTY ) { // these are right underneath the HAPI node (HAPI, status).
-            return Arrays.asList( "description", "id", "title",  "pattern", "type", "enum", "required", "items",
+            return Arrays.asList( "description", "id", "title",  "pattern", 
+                "type", "enum", "required", "items",
                 "patternProperties", "additionalProperties",
                 "minItems", "additionalItems", "uniqueItems" );
         } else if ( mapType==MapType.SCHEMA_NODE ) {
-            return Arrays.asList( "description","id", "title", "pattern", "type", "required", "items",
+            return Arrays.asList( "description","id", "title", "pattern", 
+                "type", "required", "items",
                 "patternProperties", "additionalProperties",
-                "minItems", "additionalItems", "uniqueItems" );            
+                "minItems", "additionalItems", "uniqueItems" );        
+        } else if ( mapType==MapType.SCHEMA_DEFINITIONS ) {
+            return Arrays.asList( "$schema", "HAPI", "HAPIDateTime", 
+                "HAPIStatus", "UnitsAndLabel", "Ref", "about", "capabilities", 
+                "catalog","info" );
         } else {
             return Collections.emptyList();
         }
@@ -127,7 +136,7 @@ public class HapiJsonSorter {
         }
     }
         
-    private static Map sortMap( FileType type, String name, Map m) {
+    private static Map sortMap( FileType type, String name, Map m, int depth ) {
 
         MapType mapType= identifyMapType( type, name, m );
         if ( type==FileType.HAPI_COMBINED_SCHEMA ) {
@@ -139,14 +148,22 @@ public class HapiJsonSorter {
             String k= (String)keys.get(i);
             Object o= m.get(k);
             if ( o instanceof Map ) {
-                m.put(k, sortMap( type, k, (Map)o) );
+                MapType childMapType= identifyMapType( type, k, (Map)o );
+                m.put(k+"::"+childMapType, sortMap( type, k, (Map)o, depth+1 ) );
                 
             } else if ( o instanceof List ) {
                 List list= (List)o;
+                if ( list.size()>0 && k.equals("anyOf") ) {
+                    Object o2= list.get(0);
+                    if ( o2 instanceof Map ) {
+                        mapType= identifyMapType( type, name, m );
+                        //System.err.println(">>> anyOf type is "+mapType + " file type is "+type );
+                    }
+                }
                 for ( int l= 0; l<list.size(); l++ ) {
                     Object o2= list.get(l);
                     if ( o2 instanceof Map ) {
-                        list.set(l, sortMap( type, "element of "+k, (Map)o2) );
+                        list.set(l, sortMap( type, "element of "+k, (Map)o2, depth+1 ) );
                     }
                 }
             }
@@ -165,10 +182,19 @@ public class HapiJsonSorter {
         if ( lsorted!=l ) {
             LinkedHashMap result= new LinkedHashMap();
             for ( String k: lsorted ) {
+                if ( m.get(k) instanceof List && ((List)m.get(k)).size()>0 ) {
+                    Object o= ((List)m.get(k)).get(0);
+                    if ( o instanceof Map ) {
+                        MapType childMapType= identifyMapType( type, k, (Map)o );
+                        result.put( k+"::"+childMapType, m.get(k) );
+                        continue;
+                    }
+                }
                 result.put( k, m.get(k) );
             }
             return result;            
         } else {
+            System.err.println("no sorting applied: "+name );
             return m;
         }
     }
@@ -191,12 +217,12 @@ public class HapiJsonSorter {
         
         URL url= new File(n).toURI().toURL();
         Map m= gson.fromJson( new InputStreamReader(url.openStream()), LinkedHashMap.class );
-        if ( m.containsKey("type") ) {
-            m= sortMap( FileType.HAPI_SCHEMA, "", m );
+        if ( m.containsKey("type") || m.containsKey("definitions") ) {
+            m= sortMap( FileType.HAPI_SCHEMA, "", m, 0 );
         } else if ( m.containsKey("HAPIDateTime") ) {
-            m= sortMap( FileType.HAPI_COMBINED_SCHEMA, "", m );
+            m= sortMap( FileType.HAPI_COMBINED_SCHEMA, "", m, 0 );
         } else {
-            m= sortMap( FileType.HAPI, "", m);
+            m= sortMap( FileType.HAPI, "", m, 0 );
         }
         
         String s= gson.toJson(m, LinkedHashMap.class);
