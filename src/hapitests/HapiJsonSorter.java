@@ -36,6 +36,7 @@ public class HapiJsonSorter {
         SCHEMA_NODE,
         SCHEMA_PROPERTY,
         SCHEMA_DEFINITIONS,
+        COMBINED_SCHEMA,
         MAP
     }
     
@@ -58,7 +59,7 @@ public class HapiJsonSorter {
                 return MapType.SCHEMA_NODE;
             }
         } else if ( type==FileType.HAPI_COMBINED_SCHEMA ) {
-            return MapType.MAP;
+            return MapType.COMBINED_SCHEMA;
         }
         if ( m.containsKey("HAPI") ) {
             if ( m.containsKey("parameters") ) {
@@ -105,12 +106,12 @@ public class HapiJsonSorter {
                 "resourceURL", "resourceID", "creationDate", "citation", 
                 "modificationDate", "contact", "contactID", "additionalMetadata" );
         } else if ( mapType==MapType.SCHEMA_PROPERTY ) { // these are right underneath the HAPI node (HAPI, status).
-            return Arrays.asList( "description", "id", "title",  "pattern", 
+            return Arrays.asList( "$schema", "description", "id", "title",  "pattern", 
                 "type", "enum", "required", "items",
                 "patternProperties", "additionalProperties",
                 "minItems", "additionalItems", "uniqueItems" );
         } else if ( mapType==MapType.SCHEMA_NODE ) {
-            return Arrays.asList( "description","id", "title", "pattern", 
+            return Arrays.asList( "$schema", "definitions", "description","id", "title", "pattern", 
                 "type", "required", "items",
                 "patternProperties", "additionalProperties",
                 "minItems", "additionalItems", "uniqueItems" );        
@@ -118,6 +119,8 @@ public class HapiJsonSorter {
             return Arrays.asList( "$schema", "HAPI", "HAPIDateTime", 
                 "HAPIStatus", "UnitsAndLabel", "Ref", "about", "capabilities", 
                 "catalog","info" );
+        } else if ( mapType==MapType.COMBINED_SCHEMA ) {
+            return Arrays.asList( "$schema", "catalog", "info", "definitions" );
         } else if ( mapType==MapType.REQUEST_STATUS ) {
             return Arrays.asList( "code", "message" );
         } else if ( mapType==MapType.HAPI_STATUS ) {
@@ -157,6 +160,10 @@ public class HapiJsonSorter {
         
     private static Map sortMap( FileType type, String name, Map m, int depth ) {
 
+        //if ( depth==0 ) {
+        //    System.err.println("stop here 161");
+        //}
+        
         MapType mapType= identifyMapType( type, name, m );
         if ( type==FileType.HAPI_COMBINED_SCHEMA ) {
             type= FileType.HAPI_SCHEMA;
@@ -191,6 +198,10 @@ public class HapiJsonSorter {
             }
         }
         
+        //if ( depth==0 ) {
+        //    System.err.println("stop here 161");
+        //}
+        
         if ( mapType==MapType.PARAMETER ) {
             logger.fine("parameter");
         } else if ( mapType==MapType.INFO ) {
@@ -217,7 +228,9 @@ public class HapiJsonSorter {
             }
             return result;            
         } else {
-            System.err.println("no sorting applied: "+name );
+            if ( m.size()>1 ) {
+                System.err.println("no sorting applied: "+name );
+            }
             return m;
         }
     }
@@ -252,13 +265,13 @@ public class HapiJsonSorter {
         
         if ( out.equals("-") ) {
             System.out.println(s);
-            System.out.println("----");
-            System.out.println(n);
+            //System.out.println("----");
+            //System.out.println(n);
         } else {
             new File(out).getParentFile().mkdirs();
             new FileWriter(out).write( s );
-            System.out.println("----");
-            System.out.println(n);
+            //System.out.println("----");
+            //System.out.println(n);
         }
     }
 }
