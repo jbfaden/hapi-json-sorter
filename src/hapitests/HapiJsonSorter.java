@@ -91,42 +91,44 @@ public class HapiJsonSorter {
      * @return 
      */
     private static List<String> sortForType( MapType mapType ) {
-        if ( mapType==MapType.PARAMETER ) {
-            return Arrays.asList( "name", "type", "length", "size", "units",
-                "coordinateSystemName", "vectorComponents", "fill", 
-                "description", "label", "bins" );
-        } else if ( mapType==MapType.PARAMETER_BINS ) {
-            return Arrays.asList( "name", "centers", "ranges", 
-                "units", "label", "description" );
-        } else if ( mapType==MapType.INFO ) {
-            return Arrays.asList( "$schema", "HAPI", "status", "format", "parameters", 
-                "startDate", "stopDate", "timeStampLocation", "cadence", 
-                "sampleStartDate", "sampleStopDate", "maxRequestDuration",
-                "description", "unitsSchema", "coordinateSystemSchema",
-                "resourceURL", "resourceID", "creationDate", "citation", 
-                "modificationDate", "contact", "contactID", "additionalMetadata" );
-        } else if ( mapType==MapType.SCHEMA_PROPERTY ) { // these are right underneath the HAPI node (HAPI, status).
-            return Arrays.asList( "$schema", "description", "id", "title",  "pattern", 
-                "type", "enum", "required", "items",
-                "patternProperties", "additionalProperties",
-                "minItems", "additionalItems", "uniqueItems" );
-        } else if ( mapType==MapType.SCHEMA_NODE ) {
-            return Arrays.asList( "$schema", "definitions", "description","id", "title", "pattern", 
-                "type", "required", "items",
-                "patternProperties", "additionalProperties",
-                "minItems", "additionalItems", "uniqueItems" );        
-        } else if ( mapType==MapType.SCHEMA_DEFINITIONS ) {
-            return Arrays.asList( "$schema", "HAPI", "HAPIDateTime", 
-                "HAPIStatus", "UnitsAndLabel", "Ref", "about", "capabilities", 
-                "catalog","info" );
-        } else if ( mapType==MapType.COMBINED_SCHEMA ) {
-            return Arrays.asList( "$schema", "catalog", "info", "definitions" );
-        } else if ( mapType==MapType.REQUEST_STATUS ) {
-            return Arrays.asList( "code", "message" );
-        } else if ( mapType==MapType.HAPI_STATUS ) {
-            return Arrays.asList( "HAPI", "status" );
-        } else {
-            return Collections.emptyList();
+        switch (mapType) {
+            case PARAMETER:
+                return Arrays.asList( "name", "type", "length", "size", "units",
+                    "coordinateSystemName", "vectorComponents", "fill",
+                    "description", "label", "bins" );
+            case PARAMETER_BINS:
+                return Arrays.asList( "name", "centers", "ranges",
+                    "units", "label", "description" );
+            case INFO:
+                return Arrays.asList( "$schema", "HAPI", "status", "format", "parameters",
+                    "startDate", "stopDate", "timeStampLocation", "cadence",
+                    "sampleStartDate", "sampleStopDate", "maxRequestDuration",
+                    "description", "unitsSchema", "coordinateSystemSchema",
+                    "resourceURL", "resourceID", "creationDate", "citation",
+                    "modificationDate", "contact", "contactID", "additionalMetadata" );
+            case SCHEMA_PROPERTY:
+                // these are right underneath the HAPI node (HAPI, status).
+                return Arrays.asList( "$schema", "description", "id", "title",  "pattern",
+                    "type", "enum", "required", "items",
+                    "patternProperties", "additionalProperties",
+                    "minItems", "additionalItems", "uniqueItems" );
+            case SCHEMA_NODE:
+                return Arrays.asList( "$schema", "definitions", "description","id", "title", "pattern",
+                    "type", "required", "items",
+                    "patternProperties", "additionalProperties",
+                    "minItems", "additionalItems", "uniqueItems" );
+            case SCHEMA_DEFINITIONS:
+                return Arrays.asList( "$schema", "HAPI", "HAPIDateTime",
+                    "HAPIStatus", "UnitsAndLabel", "Ref", "about", "capabilities",
+                    "catalog","info" );
+            case COMBINED_SCHEMA:
+                return Arrays.asList( "$schema", "catalog", "info", "definitions" );
+            case REQUEST_STATUS:
+                return Arrays.asList( "code", "message" );
+            case HAPI_STATUS:
+                return Arrays.asList( "HAPI", "status" );
+            default:
+                return Collections.emptyList();
         }
     }
     
@@ -169,7 +171,7 @@ public class HapiJsonSorter {
             type= FileType.HAPI_SCHEMA;
         }
         if ( mapType==MapType.MAP ) {
-            // why did we fail to ID this map?
+            // why did we fail to ID this map?  Add breakpoint here to find out.
             mapType= identifyMapType( type, name, m );
         }
         List keys= new ArrayList(m.keySet());
@@ -177,8 +179,6 @@ public class HapiJsonSorter {
             String k= (String)keys.get(i);
             Object o= m.get(k);
             if ( o instanceof Map ) {
-                //MapType childMapType= identifyMapType( type, k, (Map)o );
-                //m.put(k+"::"+childMapType, sortMap( type, k, (Map)o, depth+1 ) );
                 m.put(k, sortMap( type, k, (Map)o, depth+1 ) );
             } else if ( o instanceof List ) {
                 List list= (List)o;
@@ -198,17 +198,6 @@ public class HapiJsonSorter {
             }
         }
         
-        //if ( depth==0 ) {
-        //    System.err.println("stop here 161");
-        //}
-        
-        if ( mapType==MapType.PARAMETER ) {
-            logger.fine("parameter");
-        } else if ( mapType==MapType.INFO ) {
-            logger.fine("info");
-        } else if ( mapType==MapType.SCHEMA_NODE ) {
-            logger.fine("schema_node");
-        }
         ArrayList<String> l= new ArrayList<>(m.keySet());
         List<String> lsorted= sortKeysForType( mapType, l );
 
